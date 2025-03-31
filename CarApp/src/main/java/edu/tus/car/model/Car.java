@@ -15,7 +15,9 @@ public class Car {
 	private String color;
 	
 	
-	public Car() {}
+	public Car() {
+		  // Intentionally empty - required by frameworks.
+	}
 	
 	public void setId(Long id) {
 		this.id = id;
