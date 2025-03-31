@@ -1,81 +1,111 @@
 package edu.tus.car.controller;
 
-import java.util.ArrayList;
-import java.util.Optional;
+import edu.tus.car.exception.CarNotFoundException; // Make sure this is imported
+import edu.tus.car.exception.CarValidationException; // Make sure this is imported
+import edu.tus.car.model.Car;
+import edu.tus.car.service.CarService;
+import edu.tus.car.errors.ErrorMessage; // Assuming this class exists for error responses
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import edu.tus.car.exception.CarException;
-import edu.tus.car.model.Car;
-import edu.tus.car.service.CarService;
-import edu.tus.car.errors.ErrorMessage;
+import org.springframework.web.bind.annotation.*; // Use wildcard for brevity or list individually
+
+import java.util.Collections; // Import for Collections.emptyList()
+import java.util.List;
+// Removed unused Optional import if not needed elsewhere
+// Removed unused ArrayList import
 
 @RestController
 @RequestMapping("/api/cars")
 public class CarController {
 
-	@Autowired
-	CarService carService;
-	
-	@GetMapping
-	public ResponseEntity getAllCars(){
-		ArrayList<Car> cars=(ArrayList<Car>) carService.getAllCars();
-		if (cars.size()==0) {
-			return ResponseEntity.status(HttpStatus.NO_CONTENT).body(cars);
-		}
-		else {
-			return (ResponseEntity) ResponseEntity.status(HttpStatus.OK).body(cars);
-		}
-	}
-	
-	@GetMapping("/{id}")
-	public ResponseEntity getCarById(@PathVariable("id") Long id){
-		Optional<Car> car= carService.getCarById(id);
-		if (car.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.NO_CONTENT).body(car);
-		}
-		else {
-			return ResponseEntity.status(HttpStatus.OK).body(car);
-		}
-	}
+    private final CarService carService;
 
-	@PostMapping
-	public ResponseEntity addCar(@RequestBody Car car) {
-		try {
-			Car savedCar = carService.createCar(car);
-			return ResponseEntity.status(HttpStatus.CREATED).body(savedCar);
-		} catch (CarException e) {
-			ErrorMessage errorMessage = new ErrorMessage(e.getMessage());
-			return ResponseEntity.badRequest().body(errorMessage);
-		}
-	}
-	
-	@DeleteMapping("/{id}")
-	public ResponseEntity deleteCar(@PathVariable("id") Long id) {
-		try {
-			carService.deleteCar(id);
-			return ResponseEntity.status(HttpStatus.OK).body(null);
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-		}
-	}
-	
-	@GetMapping("/year/{year}")
-	public ResponseEntity getCarsByYear(@PathVariable("year") int year) {
-	    ArrayList<Car> cars = (ArrayList<Car>) carService.getCarsByYear(year);
-	    if (cars.isEmpty()) {
-	        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-	    } else {
-	        return ResponseEntity.status(HttpStatus.OK).body(cars);
-	    }
-	}
+    // Constructor Injection - Preferred over field injection
+    @Autowired
+    public CarController(CarService carService) {
+        this.carService = carService;
+    }
 
+    @GetMapping
+    // L29 Fix: Provide parametrized type ResponseEntity<List<Car>>
+    public ResponseEntity<List<Car>> getAllCars() {
+        // L30 Fix: Use interface List<Car>, remove cast (assuming service returns List<Car>)
+        List<Car> cars = carService.getAllCars();
+        // L31 Fix: Use isEmpty() - Although not strictly needed now, returning OK with empty list is better than NO_CONTENT
+        // Return OK (200) with the list (even if empty, returns [])
+        // L35 Fix: Remove unnecessary cast
+        return ResponseEntity.ok(cars);
+        /*
+        // Original logic slightly modified for standard practice (returning OK with empty list)
+        if (cars.isEmpty()) {
+             // Returning OK with an empty list is more standard for GET collections than NO_CONTENT
+             return ResponseEntity.ok(Collections.emptyList());
+             // Or uncomment below if NO_CONTENT is explicitly desired:
+             // return ResponseEntity.noContent().build();
+        } else {
+             return ResponseEntity.ok(cars);
+        }
+        */
+    }
+
+    @GetMapping("/{id}")
+    // L40 Fix: Provide parametrized type ResponseEntity<Car>
+    public ResponseEntity<Car> getCarById(@PathVariable("id") Long id) {
+        // Retrieve Optional<Car>
+        // L41 Fix (Implicit): Handle Optional correctly
+        return carService.getCarById(id)
+                .map(ResponseEntity::ok) // If car is present, wrap it in ResponseEntity.ok()
+                .orElseGet(() -> ResponseEntity.notFound().build()); // If empty, return 404 Not Found
+    }
+
+    @PostMapping
+    // L51 Fix: Parametrized type. Can be Object or a specific Error DTO if needed.
+    public ResponseEntity<?> addCar(@RequestBody Car car) {
+        try {
+            Car savedCar = carService.createCar(car);
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedCar);
+            // L55 Fix: Catch the more specific exception thrown by the service if possible
+        } catch (CarValidationException e) { // Catch specific validation exception
+            ErrorMessage errorMessage = new ErrorMessage(e.getMessage());
+            return ResponseEntity.badRequest().body(errorMessage);
+        }
+        // Consider adding a catch block for other potential exceptions if necessary
+    }
+
+    @DeleteMapping("/{id}")
+    // L62 Fix: Parametrized type ResponseEntity<Void> (common for successful delete with no body)
+    public ResponseEntity<Void> deleteCar(@PathVariable("id") Long id) {
+        try {
+            carService.deleteCar(id);
+            // L65 Fix: Return NO_CONTENT (204) for successful DELETE with no response body
+            return ResponseEntity.noContent().build();
+            // L66 Fix: Catch the specific exception, not generic Exception
+        } catch (CarNotFoundException e) { // Catch specific exception from service
+            // L67 Fix: Return NOT_FOUND (404)
+            return ResponseEntity.notFound().build();
+        }
+        // Consider adding a catch block for other potential exceptions if necessary
+    }
+
+    @GetMapping("/year/{year}")
+    // L72 Fix: Provide parametrized type ResponseEntity<List<Car>>
+    public ResponseEntity<List<Car>> getCarsByYear(@PathVariable("year") int year) {
+        // L73 Fix: Use interface List<Car>, remove cast
+        List<Car> cars = carService.getCarsByYear(year);
+        // L74/L75 Fix: Return OK (200) with the list (which might be empty [])
+        return ResponseEntity.ok(cars);
+        /*
+        // Original logic slightly modified (returning OK with empty list)
+        if (cars.isEmpty()) {
+            // Return OK with empty list []
+            return ResponseEntity.ok(Collections.emptyList());
+            // Or uncomment if 404 is explicitly desired when no cars found for a valid year:
+            // return ResponseEntity.notFound().build();
+        } else {
+            return ResponseEntity.ok(cars);
+        }
+         */
+    }
 }
