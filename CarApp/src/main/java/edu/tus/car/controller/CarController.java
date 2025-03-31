@@ -1,5 +1,7 @@
 package edu.tus.car.controller;
 
+// Removed unused import: import java.util.Collections;
+
 import edu.tus.car.exception.CarNotFoundException; // Make sure this is imported
 import edu.tus.car.exception.CarValidationException; // Make sure this is imported
 import edu.tus.car.model.Car;
@@ -11,10 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*; // Use wildcard for brevity or list individually
 
-import java.util.Collections; // Import for Collections.emptyList()
 import java.util.List;
 // Removed unused Optional import if not needed elsewhere
 // Removed unused ArrayList import
+
 
 @RestController
 @RequestMapping("/api/cars")
@@ -37,17 +39,7 @@ public class CarController {
         // Return OK (200) with the list (even if empty, returns [])
         // L35 Fix: Remove unnecessary cast
         return ResponseEntity.ok(cars);
-        /*
-        // Original logic slightly modified for standard practice (returning OK with empty list)
-        if (cars.isEmpty()) {
-             // Returning OK with an empty list is more standard for GET collections than NO_CONTENT
-             return ResponseEntity.ok(Collections.emptyList());
-             // Or uncomment below if NO_CONTENT is explicitly desired:
-             // return ResponseEntity.noContent().build();
-        } else {
-             return ResponseEntity.ok(cars);
-        }
-        */
+        // L42 Fix: Removed block of commented-out code
     }
 
     @GetMapping("/{id}")
@@ -61,8 +53,8 @@ public class CarController {
     }
 
     @PostMapping
-    // L51 Fix: Parametrized type. Can be Object or a specific Error DTO if needed.
-    public ResponseEntity<?> addCar(@RequestBody Car car) {
+    // L51/L65 Fix: Use specific common type Object instead of wildcard '?'
+    public ResponseEntity<Object> addCar(@RequestBody Car car) {
         try {
             Car savedCar = carService.createCar(car);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedCar);
@@ -96,16 +88,6 @@ public class CarController {
         List<Car> cars = carService.getCarsByYear(year);
         // L74/L75 Fix: Return OK (200) with the list (which might be empty [])
         return ResponseEntity.ok(cars);
-        /*
-        // Original logic slightly modified (returning OK with empty list)
-        if (cars.isEmpty()) {
-            // Return OK with empty list []
-            return ResponseEntity.ok(Collections.emptyList());
-            // Or uncomment if 404 is explicitly desired when no cars found for a valid year:
-            // return ResponseEntity.notFound().build();
-        } else {
-            return ResponseEntity.ok(cars);
-        }
-         */
+        // L101 Fix: Removed block of commented-out code
     }
 }
